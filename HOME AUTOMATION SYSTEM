@@ -1,0 +1,71 @@
+import RPi.GPIO as GPIO
+import spidev
+import logging
+import time
+logging.basicConfig(level=logging.ERROR)
+
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(17,GPIO.IN,pull_up_down=GPIO.PUD_UP)
+GPIO.setup(23,GPIO.IN,pull_up_down=GPIO.PUD_UP)
+GPIO.setup(24,GPIO.OUT)
+GPIO.setup(25,GPIO.OUT)
+GPIO.setup(26,GPIO.OUT)
+spi = spidev.SpiDev()
+spi.open(0,0)
+spi.max_speed_hz = 1000000
+def read_mcp3208(channel):
+	try:
+		spi.xfer([0x01,(channel<<6) | 0x00,0x00])
+		data = spi.xfer([0x00,0x00,0x00])
+		valeur = ((data[1] & 0x0F)<<8) | data[2]
+		return valeur
+	except Exception as e:
+		logging.error("erreur de lecture MCP3208:%s",e)
+
+def read_lm35():
+	try:
+		valeur = read_mcp3208(0)
+		temp = (valeur*3.3-500)/10
+		return temp
+	except Exception as e:
+		logging.error("erreur de lecture LM35:%s",e)
+
+def read_mq2():
+	try:
+		return GPIO.input(23)
+	except Exception as e:
+		logging.error("erreur de lecture MQ-2:%s",e)
+def read_pir():
+	try:
+		return GPIO.input(17)
+	except Exception as e:
+		logging.error("erreur de lecture PIR:%s",e)
+def main():
+
+	while 1:
+		try:
+			temp = read_lm35()
+			gaz = read_mq2()
+			mouvement = read_pir()
+
+			print("Temperature:{:.1f}degre".format(temp))
+			print("Gaz : {}".format(gaz))
+			print("Mouvement:{}".format(mouvement))
+		
+			if mouvement:
+				GPIO.output(24,True)
+				GPIO.output(25,True)
+			else:
+				GPIO.output(24,False)
+				GPIO.output(25,False)
+			if gaz>500:
+					GPIO.output(26,True)
+			else:
+				GPIO.output(26,False)
+
+				time.sleep(1)
+
+		except EXCEPTION as e:
+			print("Erreur principale:%s",e)
+	if _name_=="_main_":
+		main()
